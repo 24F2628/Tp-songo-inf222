@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Songo Online — Joueurs Distants</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --wood-dark:  #3b1f0a;
+    --wood-mid:   #7c4a1e;
+    --wood-light: #c68642;
+    --wood-grain: #e8b87a;
+    --seed-green: #4a7c3f;
+    --seed-light: #7ab648;
+    --seed-shadow:#2d5227;
+    --ivory:      #f5ead8;
+    --gold:       #d4a017;
+    --nord-bg:    #1a3a5c;
+    --sud-bg:     #5c1a1a;
+    --highlight:  #ffdd57;
+    --capture:    #ff9f1c;
+    --online:     #22c55e;
+    --waiting:    #f59e0b;
+    --error:      #ef4444;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    min-height: 100vh;
+    background: var(--wood-dark);
+    background-image:
+      repeating-linear-gradient(92deg, transparent, transparent 120px, rgba(255,255,255,0.015) 120px, rgba(255,255,255,0.015) 121px),
+      repeating-linear-gradient(180deg, transparent, transparent 80px, rgba(0,0,0,0.03) 80px, rgba(0,0,0,0.03) 81px);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+    color: var(--ivory);
+  }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--wood-grain);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 0.82rem;
+    color: var(--wood-light);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  /* ── LOBBY ────────────────────────────────────────── */
+  #lobby {
+    width: 100%;
+    max-width: 440px;
+    background: var(--wood-mid);
+    border: 2px solid var(--wood-light);
+    border-radius: 18px;
+    padding: 28px 28px 24px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  }
+  #lobby h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    color: var(--wood-grain);
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  .lobby-section {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .lobby-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+
+  .lobby-section h3 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--wood-light);
+    margin-bottom: 10px;
+  }
+
+  .server-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    align-items: center;
+  }
+  .server-row label { font-size: 0.82rem; white-space: nowrap; opacity: 0.8; }
+  input[type="text"] {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 7px;
+    padding: 8px 12px;
+    color: var(--ivory);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.88rem;
+  }
+  input[type="text"]::placeholder { opacity: 0.4; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .badge.online  { background: rgba(34,197,94,0.2);  color: var(--online); }
+  .badge.offline { background: rgba(239,68,68,0.2);  color: var(--error); }
+  .badge.waiting { background: rgba(245,158,11,0.2); color: var(--waiting); }
+
+  .game-code-display {
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    margin: 10px 0;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .game-code-display .code-label { font-size: 0.75rem; opacity: 0.6; margin-bottom: 4px; }
+  .game-code-display .code-val {
+    font-family: 'Cinzel', serif;
+    font-size: 2rem;
+    letter-spacing: 0.25em;
+    color: var(--highlight);
+    font-weight: 800;
+  }
+  .copy-btn {
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--ivory);
+    padding: 4px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 6px;
+    font-family: 'Inter', sans-serif;
+  }
+  .copy-btn:hover { background: rgba(255,255,255,0.18); }
+
+  button.btn-main {
+    width: 100%;
+    background: var(--wood-light);
+    color: var(--wood-dark);
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+    padding: 12px;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    margin-top: 6px;
+  }
+  button.btn-main:hover  { background: var(--wood-grain); }
+  button.btn-main:active { transform: scale(0.97); }
+  button.btn-main:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .lobby-msg {
+    font-size: 0.82rem;
+    text-align: center;
+    padding: 8px;
+    border-radius: 7px;
+    margin-top: 10px;
+  }
+  .lobby-msg.ok   { background: rgba(34,197,94,0.15); color: var(--online); }
+  .lobby-msg.err  { background: rgba(239,68,68,0.15); color: var(--error); }
+  .lobby-msg.info { background: rgba(255,221,87,0.1); color: var(--highlight); }
+
+  /* ── JEUX (tablier) ────────────────────────────────── */
+  #game-area { display: none; width: 100%; max-width: 680px; }
+
+  /* Status connexion */
+  .conn-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
+    font-size: 0.78rem;
+    opacity: 0.75;
+  }
+  .conn-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--waiting);
+    transition: background .3s;
+  }
+  .conn-dot.ok { background: var(--online); }
+
+  /* Scoreboard & tablier identiques à la version locale */
+  .scoreboard {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .score-card {
+    flex: 1;
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: border-color .3s, box-shadow .3s;
+    position: relative;
+  }
+  .score-card.nord { background: var(--nord-bg); }
+  .score-card.sud  { background: var(--sud-bg); }
+  .score-card.active-turn {
+    border-color: var(--highlight);
+    box-shadow: 0 0 16px rgba(255,221,87,0.4);
+  }
+  .score-card.my-card::after {
+    content: '👤 Vous';
+    position: absolute;
+    top: 4px; right: 8px;
+    font-size: 0.65rem;
+    color: var(--highlight);
+  }
+  .score-card .player-label { font-family:'Cinzel',serif; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; opacity:0.7; }
+  .score-card .score-val    { font-size: 1.9rem; font-weight:700; color:var(--highlight); line-height:1.1; }
+  .score-card .score-sub    { font-size: 0.68rem; opacity:0.55; }
+
+  .board-wrapper {
+    background: var(--wood-mid);
+    border-radius: 18px;
+    padding: 16px 12px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+    border: 3px solid var(--wood-light);
+  }
+  .row-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 7px;
+    padding: 3px 0;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .row-label.nord { color: #7ab8e8; background: rgba(26,58,92,0.4); }
+  .row-label.sud  { color: #e87a7a; background: rgba(92,26,26,0.4); }
+  .row { display:flex; gap:5px; justify-content:center; margin-bottom:5px; }
+  .divider { height:2px; background:linear-gradient(90deg,transparent,var(--wood-dark),transparent); margin:7px 4px; }
+
+  .cell {
+    width: 74px; height: 74px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, var(--wood-grain), var(--wood-dark));
+    border: 2px solid var(--wood-dark);
+    display: flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor: default; position: relative;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .cell.clickable { cursor: pointer; }
+  .cell.clickable:hover {
+    transform: scale(1.08);
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.35), 0 4px 12px rgba(255,221,87,0.4);
+    border-color: var(--highlight);
+  }
+  .cell.selected { border-color:var(--highlight); box-shadow:inset 0 3px 6px rgba(0,0,0,.35),0 0 18px rgba(255,221,87,.6); transform:scale(1.1); }
+  .cell .cell-idx  { font-size:0.58rem; opacity:0.4; position:absolute; top:4px; font-family:'Cinzel',serif; }
+  .cell .seed-count { font-size:1.25rem; font-weight:700; color:var(--ivory); text-shadow:0 1px 3px rgba(0,0,0,.7); }
+  .cell .seeds-visual { display:flex; flex-wrap:wrap; gap:2px; justify-content:center; max-width:50px; margin-top:1px; }
+  .seed-dot { width:7px; height:7px; border-radius:50%; background:radial-gradient(circle at 30% 30%,var(--seed-light),var(--seed-shadow)); box-shadow:0 1px 2px rgba(0,0,0,.4); }
+
+  .status-bar {
+    margin-top: 14px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 10px;
+    padding: 11px 16px;
+    text-align: center;
+    min-height: 50px;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .status-msg { font-size:0.92rem; line-height:1.5; color:var(--wood-grain); }
+  .status-msg.warn { color:var(--capture); }
+  .status-msg.good { color:#7ab648; }
+  .status-msg.end  { color:var(--highlight); font-family:'Cinzel',serif; font-size:1.05rem; }
+
+  .controls { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  button.btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: var(--ivory);
+    border: 1px solid rgba(255,255,255,0.15);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 9px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  button.btn-secondary:hover { background: rgba(255,255,255,0.18); }
+
+  .history-box {
+    margin-top: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    max-height: 110px;
+    overflow-y: auto;
+    display: none;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .history-box.open { display: block; }
+  .history-box p { font-size:0.75rem; color:rgba(245,234,216,0.6); line-height:1.7; }
+
+  /* AJAX indicator */
+  .ajax-pulse {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--online);
+    display: inline-block;
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.4; transform:scale(0.7); }
+  }
+
+  /* Modal fin */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.72); z-index:100; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--wood-mid); border:3px solid var(--wood-light); border-radius:18px; padding:32px 36px; text-align:center; max-width:340px; width:90%; box-shadow:0 12px 50px rgba(0,0,0,.7); }
+  .modal h2 { font-family:'Cinzel',serif; font-size:1.6rem; color:var(--wood-grain); margin-bottom:10px; }
+  .modal .result-line { font-size:0.95rem; color:var(--ivory); margin-bottom:16px; line-height:1.6; }
+  .score-final { display:flex; gap:18px; justify-content:center; margin-bottom:22px; }
+  .sf-block { background:rgba(0,0,0,.3); border-radius:10px; padding:11px 18px; min-width:80px; }
+  .sf-block .sf-name { font-size:0.72rem; opacity:.7; }
+  .sf-block .sf-val  { font-size:1.7rem; font-weight:700; color:var(--highlight); }
+
+  @media (max-width:540px) {
+    .cell { width:42px; height:42px; }
+    .cell .seed-count { font-size:0.9rem; }
+    .seed-dot { width:5px; height:5px; }
+    .row { gap:3px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>SONGO <span style="font-size:0.55em;vertical-align:middle;color:var(--online);">ONLINE</span></h1>
+<p class="subtitle">Jeu Ekang · Joueurs distants · AJAX</p>
+
+<!-- ══════════════ LOBBY ══════════════ -->
+<div id="lobby">
+  <h2>🌍 Rejoindre une partie</h2>
+
+  <!-- Adresse serveur -->
+  <div class="lobby-section">
+    <h3>Serveur</h3>
+    <div class="server-row">
+      <label>URL :</label>
+      <input type="text" id="server-url" value="http://localhost:3000" placeholder="http://adresse-du-serveur:3000">
+      <button class="copy-btn" id="btn-ping" style="white-space:nowrap">🔍 Tester</button>
+    </div>
+    <div style="text-align:center;"><span class="badge offline" id="server-badge">● Non testé</span></div>
+  </div>
+
+  <!-- Créer -->
+  <div class="lobby-section">
+    <h3>Créer une partie (Joueur NORD)</h3>
+    <button class="btn-main" id="btn-create">➕ Créer la partie</button>
+    <div id="create-result" style="display:none">
+      <div class="game-code-display">
+        <div class="code-label">Code de la partie</div>
+        <div class="code-val" id="created-code">------</div>
+        <button class="copy-btn" id="btn-copy-code">📋 Copier le code</button>
+      </div>
+      <p class="lobby-msg info" id="create-msg">En attente de l'adversaire…</p>
+    </div>
+  </div>
+
+  <!-- Rejoindre -->
+  <div class="lobby-section">
+    <h3>Rejoindre une partie (Joueur SUD)</h3>
+    <div class="server-row">
+      <label>Code :</label>
+      <input type="text" id="join-code" placeholder="ex: AB3Z7K" style="text-transform:uppercase;letter-spacing:0.15em;font-family:'Cinzel',serif;font-weight:600;font-size:1rem;">
+    </div>
+    <button class="btn-main" id="btn-join">🔗 Rejoindre</button>
+    <p class="lobby-msg" id="join-msg" style="display:none"></p>
+  </div>
+</div>
+
+<!-- ══════════════ TABLIER ══════════════ -->
+<div id="game-area">
+
+  <div class="conn-bar">
+    <span class="conn-dot" id="conn-dot"></span>
+    <span id="conn-label">Connexion…</span>
+    <span class="ajax-pulse" id="ajax-pulse" style="display:none"></span>
+    <span id="poll-label" style="font-size:0.72rem;opacity:0.5;margin-left:4px;"></span>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-card nord" id="card-nord">
+      <div class="player-label">NORD</div>
+      <div class="score-val" id="score-nord">0</div>
+      <div class="score-sub">graines</div>
+    </div>
+    <div class="score-card sud" id="card-sud">
+      <div class="player-label">SUD</div>
+      <div class="score-val" id="score-sud">0</div>
+      <div class="score-sub">graines</div>
+    </div>
+  </div>
+
+  <div class="board-wrapper">
+    <div class="row-label nord" id="label-nord">↑ NORD ↑</div>
+    <div class="row" id="row-nord"></div>
+    <div class="divider"></div>
+    <div class="row" id="row-sud"></div>
+    <div class="row-label sud" id="label-sud">↓ SUD ↓</div>
+  </div>
+
+  <div class="status-bar"><p class="status-msg" id="status-msg">Initialisation…</p></div>
+
+  <div class="controls">
+    <button class="btn-secondary" id="btn-back">← Quitter</button>
+    <button class="btn-secondary" id="btn-hist">▾ Historique</button>
+  </div>
+  <div class="history-box" id="history-box"></div>
+</div>
+
+<!-- Modal fin -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">Fin de partie</h2>
+    <p class="result-line" id="modal-result"></p>
+    <div class="score-final">
+      <div class="sf-block"><div class="sf-name">NORD</div><div class="sf-val" id="mf-nord">0</div></div>
+      <div class="sf-block"><div class="sf-name">SUD</div> <div class="sf-val" id="mf-sud">0</div></div>
+    </div>
+    <button class="btn-main" id="modal-back" style="margin-top:0">← Retour au lobby</button>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────
+//  SONGO ONLINE — Client AJAX avec polling
+//  Toutes les communications passent par XMLHttpRequest (Ajax)
+// ──────────────────────────────────────────────────────────────
+
+/* ── Session locale ── */
+let session = {
+  gameId:     null,
+  playerRole: null,   // 'NORD' ou 'SUD'
+  sessionId:  null,
+  serverUrl:  'http://localhost:3000',
+};
+
+/* ── État du jeu reçu du serveur ── */
+let gameState = null;
+let pollTimer = null;
+let lastUpdatedAt = 0;
+let historyCount = 0;
+
+/* ══════════════════════════════════════════
+   AJAX HELPERS
+   ══════════════════════════════════════════ */
+
+/**
+ * Effectue une requête AJAX (XMLHttpRequest) et retourne une Promise.
+ * @param {string} method  - GET | POST
+ * @param {string} url     - URL complète
+ * @param {object} [body]  - Données JSON (pour POST)
+ */
+function ajax(method, url, body = null) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.timeout = 8000;
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch (e) { reject(new Error('Réponse JSON invalide')); }
+      } else {
+        try {
+          const err = JSON.parse(xhr.responseText);
+          reject(new Error(err.error || `HTTP ${xhr.status}`));
+        } catch { reject(new Error(`Erreur HTTP ${xhr.status}`)); }
+      }
+    };
+    xhr.onerror   = () => reject(new Error('Réseau inaccessible'));
+    xhr.ontimeout = () => reject(new Error('Délai dépassé (timeout)'));
+    xhr.send(body ? JSON.stringify(body) : null);
+  });
+}
+
+function serverUrl(path) {
+  return session.serverUrl.replace(/\/$/, '') + path;
+}
+
+/* ══════════════════════════════════════════
+   LOBBY
+   ══════════════════════════════════════════ */
+
+/* Tester le serveur */
+document.getElementById('btn-ping').addEventListener('click', async () => {
+  session.serverUrl = document.getElementById('server-url').value.trim();
+  const badge = document.getElementById('server-badge');
+  badge.textContent = '● Test en cours…';
+  badge.className   = 'badge waiting';
+  try {
+    const data = await ajax('GET', serverUrl('/api/ping'));
+    badge.textContent = `● En ligne (${data.games} partie(s))`;
+    badge.className   = 'badge online';
+  } catch (e) {
+    badge.textContent = `● Hors ligne — ${e.message}`;
+    badge.className   = 'badge offline';
+  }
+});
+
+/* Créer une partie */
+document.getElementById('btn-create').addEventListener('click', async () => {
+  session.serverUrl = document.getElementById('server-url').value.trim();
+  document.getElementById('btn-create').disabled = true;
+  try {
+    const data = await ajax('POST', serverUrl('/api/create'));
+    session.gameId     = data.gameId;
+    session.playerRole = 'NORD';
+    session.sessionId  = data.sessionId;
+    document.getElementById('created-code').textContent = data.gameId;
+    document.getElementById('create-result').style.display = 'block';
+    document.getElementById('create-msg').textContent = '⏳ En attente du joueur SUD…';
+    // Polling pour détecter l'arrivée de l'adversaire
+    startWaitingPoll();
+  } catch (e) {
+    document.getElementById('btn-create').disabled = false;
+    showLobbyMsg('create', `❌ ${e.message}`, 'err');
+  }
+});
+
+document.getElementById('btn-copy-code').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('created-code').textContent)
+    .then(() => { document.getElementById('btn-copy-code').textContent = '✅ Copié !'; setTimeout(() => { document.getElementById('btn-copy-code').textContent = '📋 Copier le code'; }, 1500); })
+    .catch(() => {});
+});
+
+/* Rejoindre une partie */
+document.getElementById('btn-join').addEventListener('click', async () => {
+  session.serverUrl = document.getElementById('server-url').value.trim();
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  if (!code) { showLobbyMsg('join', '⚠️ Entrez un code de partie.', 'err'); return; }
+  document.getElementById('btn-join').disabled = true;
+  try {
+    const data = await ajax('POST', serverUrl(`/api/join/${code}`));
+    session.gameId     = data.gameId;
+    session.playerRole = 'SUD';
+    session.sessionId  = data.sessionId;
+    showLobbyMsg('join', `✅ Partie ${data.gameId} rejointe ! Lancement…`, 'ok');
+    setTimeout(startGame, 600);
+  } catch (e) {
+    document.getElementById('btn-join').disabled = false;
+    showLobbyMsg('join', `❌ ${e.message}`, 'err');
+  }
+});
+
+function showLobbyMsg(zone, msg, type) {
+  const id = zone === 'join' ? 'join-msg' : 'create-msg';
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.textContent = msg;
+  el.className = `lobby-msg ${type}`;
+}
+
+/* Polling en attente de l'adversaire (pour le créateur) */
+function startWaitingPoll() {
+  pollTimer = setInterval(async () => {
+    try {
+      const data = await ajax('GET', serverUrl(`/api/state/${session.gameId}`));
+      if (data.playersReady.NORD && data.playersReady.SUD) {
+        clearInterval(pollTimer);
+        document.getElementById('create-msg').textContent = '✅ Adversaire connecté ! Lancement…';
+        setTimeout(startGame, 500);
+      }
+    } catch { /* retry silently */ }
+  }, 1500);
+}
+
+/* ══════════════════════════════════════════
+   DÉMARRAGE DU JEU
+   ══════════════════════════════════════════ */
+
+function startGame() {
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('game-area').style.display = 'block';
+
+  // Mettre en valeur le camp du joueur
+  const myCard = document.getElementById(`card-${session.playerRole.toLowerCase()}`);
+  myCard.classList.add('my-card');
+
+  startPolling();
+}
+
+/* ══════════════════════════════════════════
+   POLLING (AJAX répétitif)
+   Interroge /api/state toutes les secondes
+   ══════════════════════════════════════════ */
+
+function startPolling() {
+  stopPolling();
+  pollTimer = setInterval(pollState, 1000);
+  pollState(); // immédiat
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+async function pollState() {
+  const pulse = document.getElementById('ajax-pulse');
+  const pollLbl = document.getElementById('poll-label');
+  pulse.style.display = 'inline-block';
+  pollLbl.textContent = '…';
+
+  try {
+    const data = await ajax('GET', serverUrl(`/api/state/${session.gameId}`));
+
+    // Connexion OK
+    document.getElementById('conn-dot').className = 'conn-dot ok';
+    document.getElementById('conn-label').textContent = `Partie ${session.gameId} · Vous êtes ${session.playerRole}`;
+    pulse.style.display = 'none';
+    pollLbl.textContent = '';
+
+    if (data.updatedAt !== lastUpdatedAt || !gameState) {
+      lastUpdatedAt = data.updatedAt;
+      gameState = data;
+      renderGame(data);
+    }
+
+    if (data.gameOver) stopPolling();
+  } catch (e) {
+    document.getElementById('conn-dot').className = 'conn-dot';
+    document.getElementById('conn-label').textContent = `Reconnexion… (${e.message})`;
+    pulse.style.display = 'none';
+    pollLbl.textContent = '';
+  }
+}
+
+/* ══════════════════════════════════════════
+   RENDU DU TABLIER
+   ══════════════════════════════════════════ */
+
+function renderGame(state) {
+  renderRow('nord', state.board.NORD, 'NORD', state);
+  renderRow('sud',  state.board.SUD,  'SUD',  state);
+
+  document.getElementById('score-nord').textContent = state.scores.NORD;
+  document.getElementById('score-sud').textContent  = state.scores.SUD;
+
+  document.getElementById('card-nord').classList.toggle('active-turn', state.currentPlayer === 'NORD');
+  document.getElementById('card-sud').classList.toggle('active-turn',  state.currentPlayer === 'SUD');
+
+  // Historique
+  if (state.history.length > historyCount) {
+    const box = document.getElementById('history-box');
+    for (let i = historyCount; i < state.history.length; i++) {
+      const p = document.createElement('p');
+      p.textContent = `${i+1}. ${state.history[i]}`;
+      box.appendChild(p);
+      box.scrollTop = box.scrollHeight;
+    }
+    historyCount = state.history.length;
+  }
+
+  // Statut
+  if (state.gameOver) {
+    const winner = state.winner;
+    const msg = winner
+      ? `🏆 ${winner} remporte la partie ! ${state.endReason}`
+      : `🤝 Partie nulle. ${state.endReason}`;
+    setStatus(msg, 'end');
+    showEndModal(state);
+  } else if (!state.playersReady?.SUD) {
+    setStatus(`⏳ En attente du joueur SUD…`, 'warn');
+  } else if (state.currentPlayer === session.playerRole) {
+    setStatus(`✊ <b>C'est votre tour</b> — Choisissez une case à semer.`, 'good');
+  } else {
+    setStatus(`⏳ Tour de l'adversaire (${state.currentPlayer})…`, '');
+  }
+}
+
+function renderRow(rowId, cells, player, state) {
+  const row = document.getElementById('row-' + rowId);
+  row.innerHTML = '';
+  const isMyRow = player === session.playerRole;
+  const isMyTurn = state.currentPlayer === session.playerRole;
+  const indices = player === 'NORD' ? [0,1,2,3,4,5,6] : [6,5,4,3,2,1,0];
+
+  indices.forEach(i => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const seeds = cells[i];
+    const caseNum = i + 1;
+
+    const idxEl = document.createElement('span');
+    idxEl.className = 'cell-idx';
+    idxEl.textContent = caseNum;
+    cell.appendChild(idxEl);
+
+    const countEl = document.createElement('span');
+    countEl.className = 'seed-count';
+    countEl.textContent = seeds;
+    cell.appendChild(countEl);
+
+    const vis = document.createElement('div');
+    vis.className = 'seeds-visual';
+    const dots = Math.min(seeds, 12);
+    for (let d = 0; d < dots; d++) {
+      const dot = document.createElement('span');
+      dot.className = 'seed-dot';
+      vis.appendChild(dot);
+    }
+    cell.appendChild(vis);
+
+    // Cliquable si c'est mon camp, mon tour, case non vide
+    if (!state.gameOver && isMyRow && isMyTurn && seeds > 0) {
+      cell.classList.add('clickable');
+      cell.onclick = () => playMove(i);
+    }
+
+    row.appendChild(cell);
+  });
+}
+
+/* ══════════════════════════════════════════
+   JOUER UN COUP (AJAX POST)
+   ══════════════════════════════════════════ */
+
+async function playMove(cellIndex) {
+  if (!gameState || gameState.gameOver) return;
+  if (gameState.currentPlayer !== session.playerRole) return;
+
+  // Désactiver les cases pendant la requête
+  document.querySelectorAll('.cell.clickable').forEach(c => {
+    c.classList.remove('clickable');
+    c.onclick = null;
+  });
+
+  setStatus('⌛ Envoi du coup…', '');
+
+  try {
+    await ajax('POST', serverUrl(`/api/move/${session.gameId}`), {
+      playerRole: session.playerRole,
+      cellIndex,
+      sessionId: session.sessionId,
+    });
+    // Le prochain poll récupérera le nouvel état
+    await pollState();
+  } catch (e) {
+    setStatus(`❌ ${e.message}`, 'warn');
+    // Ré-activer les cases
+    if (gameState) renderGame(gameState);
+  }
+}
+
+/* ══════════════════════════════════════════
+   MODAL FIN
+   ══════════════════════════════════════════ */
+
+let endModalShown = false;
+function showEndModal(state) {
+  if (endModalShown) return;
+  endModalShown = true;
+  const winner = state.winner;
+  document.getElementById('modal-title').textContent = '🏆 Fin de partie';
+  document.getElementById('modal-result').textContent = winner
+    ? `${winner} remporte la partie ! ${state.endReason}`
+    : `Partie nulle. ${state.endReason}`;
+  document.getElementById('mf-nord').textContent = state.scores.NORD;
+  document.getElementById('mf-sud').textContent  = state.scores.SUD;
+  document.getElementById('modal').classList.add('open');
+}
+
+/* ══════════════════════════════════════════
+   HELPERS UI
+   ══════════════════════════════════════════ */
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status-msg');
+  el.innerHTML = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+/* Retour au lobby */
+function backToLobby() {
+  stopPolling();
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('game-area').style.display = 'none';
+  document.getElementById('lobby').style.display = 'block';
+  // Reset
+  session.gameId = session.playerRole = session.sessionId = null;
+  gameState = null; lastUpdatedAt = 0; historyCount = 0; endModalShown = false;
+  document.getElementById('history-box').innerHTML = '';
+  document.getElementById('btn-create').disabled = false;
+  document.getElementById('btn-join').disabled = false;
+  document.getElementById('create-result').style.display = 'none';
+  document.getElementById('card-nord').classList.remove('my-card');
+  document.getElementById('card-sud').classList.remove('my-card');
+}
+
+document.getElementById('btn-back').addEventListener('click', backToLobby);
+document.getElementById('modal-back').addEventListener('click', backToLobby);
+document.getElementById('btn-hist').addEventListener('click', () => {
+  const box = document.getElementById('history-box');
+  box.classList.toggle('open');
+  document.getElementById('btn-hist').textContent =
+    box.classList.contains('open') ? '▴ Historique' : '▾ Historique';
+});
+
+/* Mettre à jour URL serveur en temps réel */
+document.getElementById('server-url').addEventListener('change', () => {
+  session.serverUrl = document.getElementById('server-url').value.trim();
+});
+</script>
+</body>
+</html>

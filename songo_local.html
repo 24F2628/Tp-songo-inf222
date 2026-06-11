@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Songo — Jeu Local</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --wood-dark:   #3b1f0a;
+    --wood-mid:    #7c4a1e;
+    --wood-light:  #c68642;
+    --wood-grain:  #e8b87a;
+    --seed-green:  #4a7c3f;
+    --seed-light:  #7ab648;
+    --seed-shadow: #2d5227;
+    --ivory:       #f5ead8;
+    --cream:       #fdf6ec;
+    --gold:        #d4a017;
+    --nord-bg:     #1a3a5c;
+    --sud-bg:      #5c1a1a;
+    --text-light:  #f5ead8;
+    --highlight:   #ffdd57;
+    --capture-glow:#ff9f1c;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    min-height: 100vh;
+    background: var(--wood-dark);
+    background-image:
+      repeating-linear-gradient(92deg, transparent, transparent 120px, rgba(255,255,255,0.015) 120px, rgba(255,255,255,0.015) 121px),
+      repeating-linear-gradient(180deg, transparent, transparent 80px, rgba(0,0,0,0.03) 80px, rgba(0,0,0,0.03) 81px);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 10px;
+    color: var(--ivory);
+  }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--wood-grain);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--wood-light);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  /* ── SCORE BOARD ── */
+  .scoreboard {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 18px;
+    width: 100%;
+    max-width: 680px;
+  }
+  .score-card {
+    flex: 1;
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .score-card.nord { background: var(--nord-bg); }
+  .score-card.sud  { background: var(--sud-bg);  }
+  .score-card.active-turn {
+    border-color: var(--highlight);
+    box-shadow: 0 0 16px rgba(255,221,87,0.45);
+  }
+  .score-card .player-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .score-card .player-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--wood-grain);
+  }
+  .score-card .score-val {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--highlight);
+    line-height: 1.1;
+  }
+  .score-card .score-sub {
+    font-size: 0.72rem;
+    opacity: 0.6;
+  }
+
+  /* ── TABLIER ── */
+  .board-wrapper {
+    background: var(--wood-mid);
+    border-radius: 20px;
+    padding: 18px 14px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+    border: 3px solid var(--wood-light);
+    width: 100%;
+    max-width: 680px;
+  }
+
+  .row-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 8px;
+    padding: 4px 0;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .row-label.nord { color: #7ab8e8; background: rgba(26,58,92,0.4); }
+  .row-label.sud  { color: #e87a7a; background: rgba(92,26,26,0.4); }
+
+  .row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+
+  .cell {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, var(--wood-grain), var(--wood-dark));
+    border: 2px solid var(--wood-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    position: relative;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .cell.clickable {
+    cursor: pointer;
+  }
+  .cell.clickable:hover {
+    transform: scale(1.08);
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.35), 0 4px 12px rgba(255,221,87,0.4);
+    border-color: var(--highlight);
+  }
+  .cell.selected {
+    border-color: var(--highlight);
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.35), 0 0 18px rgba(255,221,87,0.6);
+    transform: scale(1.1);
+  }
+  .cell.capture-preview {
+    border-color: var(--capture-glow);
+    box-shadow: 0 0 14px rgba(255,159,28,0.5);
+  }
+  .cell.forbidden {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .cell .cell-idx {
+    font-size: 0.6rem;
+    opacity: 0.45;
+    position: absolute;
+    top: 4px;
+    font-family: 'Cinzel', serif;
+  }
+  .cell .seed-count {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--ivory);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  }
+  .cell .seeds-visual {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    justify-content: center;
+    max-width: 52px;
+    margin-top: 1px;
+  }
+  .seed-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, var(--seed-light), var(--seed-shadow));
+    box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  }
+
+  .divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--wood-dark), transparent);
+    margin: 8px 4px;
+    border-radius: 2px;
+  }
+
+  /* case n°1 forbidden overlay */
+  .cell.case1-locked::after {
+    content: '🔒';
+    position: absolute;
+    font-size: 0.9rem;
+    top: 2px;
+    right: 2px;
+  }
+
+  /* ── STATUS ── */
+  .status-bar {
+    margin-top: 16px;
+    width: 100%;
+    max-width: 680px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 10px;
+    padding: 12px 18px;
+    text-align: center;
+    min-height: 52px;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .status-bar .status-msg {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--wood-grain);
+  }
+  .status-bar .status-msg.warn  { color: #ff9f1c; }
+  .status-bar .status-msg.good  { color: #7ab648; }
+  .status-bar .status-msg.end   { color: var(--highlight); font-family:'Cinzel',serif; font-size:1.1rem; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-primary {
+    background: var(--wood-light);
+    color: var(--wood-dark);
+  }
+  .btn-primary:hover { background: var(--wood-grain); }
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: var(--ivory);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.18); }
+
+  /* ── HISTORY ── */
+  .history-toggle {
+    margin-top: 16px;
+    font-size: 0.78rem;
+    color: var(--wood-light);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .history-box {
+    margin-top: 8px;
+    width: 100%;
+    max-width: 680px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    max-height: 120px;
+    overflow-y: auto;
+    display: none;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .history-box.open { display: block; }
+  .history-box p {
+    font-size: 0.78rem;
+    color: rgba(245,234,216,0.65);
+    line-height: 1.7;
+  }
+
+  /* ── MODAL fin de partie ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset:0;
+    background: rgba(0,0,0,0.72);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--wood-mid);
+    border: 3px solid var(--wood-light);
+    border-radius: 18px;
+    padding: 36px 40px;
+    text-align: center;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 12px 50px rgba(0,0,0,0.7);
+  }
+  .modal h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.7rem;
+    color: var(--wood-grain);
+    margin-bottom: 10px;
+  }
+  .modal .result-line {
+    font-size: 1rem;
+    color: var(--ivory);
+    margin-bottom: 18px;
+    line-height: 1.6;
+  }
+  .modal .score-final {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .modal .sf-block {
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    padding: 12px 20px;
+    min-width: 90px;
+  }
+  .modal .sf-block .sf-name { font-size:0.75rem; opacity:0.7; }
+  .modal .sf-block .sf-val  { font-size:1.8rem; font-weight:700; color:var(--highlight); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 560px) {
+    .cell { width: 44px; height: 44px; }
+    .cell .seed-count { font-size: 0.95rem; }
+    .seed-dot { width: 5px; height: 5px; }
+    .row { gap: 3px; }
+    .board-wrapper { padding: 12px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>SONGO</h1>
+<p class="subtitle">Jeu Ekang · Cameroun · 2 joueurs</p>
+
+<div class="scoreboard">
+  <div class="score-card nord" id="card-nord">
+    <div class="player-label">Joueur Nord</div>
+    <div class="player-name" id="name-nord">NORD</div>
+    <div class="score-val" id="score-nord">0</div>
+    <div class="score-sub">graines récoltées</div>
+  </div>
+  <div class="score-card sud" id="card-sud">
+    <div class="player-label">Joueur Sud</div>
+    <div class="player-name" id="name-sud">SUD</div>
+    <div class="score-val" id="score-sud">0</div>
+    <div class="score-sub">graines récoltées</div>
+  </div>
+</div>
+
+<div class="board-wrapper">
+  <div class="row-label nord">↑ Territoire NORD (cases 1–7) ↑</div>
+  <div class="row" id="row-nord"></div>
+  <div class="divider"></div>
+  <div class="row" id="row-sud"></div>
+  <div class="row-label sud">↓ Territoire SUD (cases 1–7) ↓</div>
+</div>
+
+<div class="status-bar"><p class="status-msg" id="status-msg">Chargement…</p></div>
+
+<div class="controls">
+  <button class="btn-primary"   id="btn-restart">🔄 Nouvelle partie</button>
+  <button class="btn-secondary" id="btn-rules">📜 Règles</button>
+</div>
+
+<span class="history-toggle" id="hist-toggle">▾ Historique des coups</span>
+<div class="history-box" id="history-box"></div>
+
+<!-- MODAL FIN -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">Fin de partie</h2>
+    <p class="result-line" id="modal-result"></p>
+    <div class="score-final">
+      <div class="sf-block">
+        <div class="sf-name" id="mf-nord-name">NORD</div>
+        <div class="sf-val"  id="mf-nord-val">0</div>
+      </div>
+      <div class="sf-block">
+        <div class="sf-name" id="mf-sud-name">SUD</div>
+        <div class="sf-val"  id="mf-sud-val">0</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="modal-restart">🔄 Rejouer</button>
+  </div>
+</div>
+
+<!-- MODAL RÈGLES -->
+<div class="modal-overlay" id="modal-rules">
+  <div class="modal" style="max-width:480px;text-align:left;max-height:80vh;overflow-y:auto;">
+    <h2 style="text-align:center;margin-bottom:14px;">📜 Règles du Songo</h2>
+    <p style="font-size:0.85rem;line-height:1.7;color:var(--ivory);">
+      <b>Plateau :</b> 2 rangées de 7 cases. Chaque case démarre avec 5 graines (70 au total).<br><br>
+      <b>Mouvement :</b> Ramassez toutes les graines d'une case de votre camp, semez-les une à une : droite→gauche dans votre camp, puis gauche→droite chez l'adversaire (boucle continue). Si ≥14 graines, sautez la case de départ lors du premier tour.<br><br>
+      <b>Récoltes :</b> Si la dernière graine tombe dans une case adverse (sauf case n°1 adverse) qui contient 1–3 graines (2–4 avec la graine ajoutée), vous prenez ces graines. Prise en chaîne vers la gauche si les cases précédentes contiennent aussi 2–4 graines.<br><br>
+      <b>Solidarité :</b> Si le camp adverse est vide, vous devez distribuer ≥7 graines chez lui. Si impossible, donnez le maximum. Si nul coup n'atteint l'adversaire, la partie se termine.<br><br>
+      <b>Interdits :</b> (1) Interdiction de semer 1 ou 2 graines chez l'adversaire via la case 7 (ces graines lui reviennent). (2) Interdiction de vider complètement le camp adverse (aucune prise dans ce cas).<br><br>
+      <b>Fin de partie :</b> Un joueur atteint ≥40 graines | Moins de 10 graines au total | Solidarité impossible.<br><br>
+      <b>Victoire :</b> Le joueur avec ≥40 graines gagne. Sinon, partie nulle.
+    </p>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn-secondary" id="close-rules">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+//  SONGO — Moteur de jeu complet
+//  Règles selon Serge MBARGA OWONA / Club Awalé
+// ─────────────────────────────────────────────────────────────────
+
+const PLAYERS = { NORD: 'NORD', SUD: 'SUD' };
+const NAMES   = { NORD: 'NORD', SUD: 'SUD' };
+const TOTAL_CELLS = 7;
+const INIT_SEEDS  = 5;
+const WIN_THRESHOLD = 40;
+const MIN_REMAINING = 10;
+
+// État du jeu
+let board = { NORD: [], SUD: [] };
+let scores = { NORD: 0, SUD: 0 };
+let currentPlayer = PLAYERS.SUD;   // SUD commence (bas de l'écran)
+let gameOver = false;
+let history  = [];
+let animating = false;
+
+// ─── INITIALISATION ───────────────────────────────────────────
+function initGame() {
+  board.NORD = Array(TOTAL_CELLS).fill(INIT_SEEDS);
+  board.SUD  = Array(TOTAL_CELLS).fill(INIT_SEEDS);
+  scores = { NORD: 0, SUD: 0 };
+  currentPlayer = PLAYERS.SUD;
+  gameOver = false;
+  history  = [];
+  animating = false;
+  renderBoard();
+  updateScoreboard();
+  setStatus(`Tour de <b>${NAMES[currentPlayer]}</b> — Choisissez une case à semer.`, '');
+  highlightTurn();
+  document.getElementById('history-box').innerHTML = '';
+}
+
+// ─── RENDU ────────────────────────────────────────────────────
+function renderBoard() {
+  renderRow('nord', board.NORD, PLAYERS.NORD);
+  renderRow('sud',  board.SUD,  PLAYERS.SUD);
+}
+
+function renderRow(rowId, cells, player) {
+  const row = document.getElementById('row-' + rowId);
+  row.innerHTML = '';
+  // Affichage : NORD → cases 7..1 (gauche=1 à droite=7 pour NORD)
+  // SUD       → cases 1..7 (gauche=7 à droite=1 pour SUD, soit inversé)
+  // Convention visuelle : case 1 de chaque joueur = extrémité gauche VUE PAR LUI
+  // Pour NORD (en haut, joue de bas en haut) : rangée affichée gauche=1 droite=7
+  // Pour SUD  (en bas,  joue de haut en bas) : rangée affichée gauche=7 droite=1
+  // => les deux joueurs se font face, case 1 SUD face à case 1 NORD
+  let indices = player === PLAYERS.NORD
+    ? [0,1,2,3,4,5,6]   // case 1=index0 à gauche
+    : [6,5,4,3,2,1,0];  // case 1=index0 à droite (inversé pour SUD)
+
+  indices.forEach(i => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.player = player;
+    cell.dataset.index  = i;
+
+    const seeds = cells[i];
+
+    // Numéro de case (1-indexed)
+    const caseNum = i + 1;
+    const idxLabel = document.createElement('span');
+    idxLabel.className = 'cell-idx';
+    idxLabel.textContent = caseNum;
+    cell.appendChild(idxLabel);
+
+    // Graines
+    const countEl = document.createElement('span');
+    countEl.className = 'seed-count';
+    countEl.textContent = seeds;
+    cell.appendChild(countEl);
+
+    // Points visuels (max 12 pour lisibilité)
+    const vis = document.createElement('div');
+    vis.className = 'seeds-visual';
+    const dots = Math.min(seeds, 12);
+    for (let d = 0; d < dots; d++) {
+      const dot = document.createElement('span');
+      dot.className = 'seed-dot';
+      vis.appendChild(dot);
+    }
+    cell.appendChild(vis);
+
+    row.appendChild(cell);
+  });
+}
+
+function updateScoreboard() {
+  document.getElementById('score-nord').textContent = scores.NORD;
+  document.getElementById('score-sud').textContent  = scores.SUD;
+}
+
+function highlightTurn() {
+  document.getElementById('card-nord').classList.toggle('active-turn', currentPlayer === PLAYERS.NORD);
+  document.getElementById('card-sud').classList.toggle('active-turn',  currentPlayer === PLAYERS.SUD);
+  applyClickable();
+}
+
+function applyClickable() {
+  document.querySelectorAll('.cell').forEach(cell => {
+    cell.classList.remove('clickable','selected','capture-preview','case1-locked','forbidden');
+    const p = cell.dataset.player;
+    const i = parseInt(cell.dataset.index);
+    if (!gameOver && !animating && p === currentPlayer && board[p][i] > 0) {
+      // Vérif règle case7 (index 6) → interdit si 1 ou 2 graines et destination adverse
+      if (i === 6 && board[p][i] <= 2) {
+        // serait interdit si ça sème 1 ou 2 chez l'adversaire sans autre coup
+        // On laisse cliquable mais on gérera l'interdit à l'exécution
+      }
+      cell.classList.add('clickable');
+      cell.onclick = () => handleCellClick(p, i);
+    } else {
+      cell.onclick = null;
+    }
+    if (i === 0) cell.classList.add('case1-locked');
+  });
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('status-msg');
+  el.innerHTML = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+// ─── LOGIQUE DE JEU ───────────────────────────────────────────
+
+function handleCellClick(player, cellIndex) {
+  if (gameOver || animating || player !== currentPlayer) return;
+  const seeds = board[player][cellIndex];
+  if (seeds === 0) return;
+
+  // Vérif règle solidarité : si camp adverse vide, doit distribuer ≥7
+  const opponent = player === PLAYERS.NORD ? PLAYERS.SUD : PLAYERS.NORD;
+  const opponentEmpty = board[opponent].every(s => s === 0);
+  if (opponentEmpty) {
+    const wouldSend = countSeedsToOpponent(player, cellIndex, seeds);
+    const maxPossible = maxSeedsToOpponent(player);
+    if (wouldSend < 7 && wouldSend < maxPossible) {
+      setStatus('⚠️ Solidarité : vous devez envoyer ≥7 graines chez l\'adversaire (ou le maximum possible).', 'warn');
+      return;
+    }
+  }
+
+  executeMove(player, cellIndex);
+}
+
+function countSeedsToOpponent(player, startIndex, seeds) {
+  // Compte combien de graines arrivent dans le camp adverse
+  const opponent = player === PLAYERS.NORD ? PLAYERS.SUD : PLAYERS.NORD;
+  let boardCopy = { NORD: [...board.NORD], SUD: [...board.SUD] };
+  boardCopy[player][startIndex] = 0;
+  let pos = navigate(player, startIndex, 1);
+  let count = 0;
+  for (let s = 0; s < seeds; s++) {
+    if (pos.player === opponent) count++;
+    if (s < seeds - 1) pos = navigate(pos.player, pos.index, 1);
+  }
+  return count;
+}
+
+function maxSeedsToOpponent(player) {
+  let max = 0;
+  for (let i = 0; i < TOTAL_CELLS; i++) {
+    if (board[player][i] > 0) {
+      const c = countSeedsToOpponent(player, i, board[player][i]);
+      if (c > max) max = c;
+    }
+  }
+  return max;
+}
+
+// Navigation circulaire : SUD joue droite→gauche dans son camp (index 6→0)
+// puis gauche→droite dans le camp NORD (index 0→6)
+// NORD joue droite→gauche dans son camp (index 6→0)
+// puis gauche→droite dans le camp SUD (index 0→6)
+// En termes d'index de tableau :
+//   SUD camp : 6,5,4,3,2,1,0 puis NORD camp : 0,1,2,3,4,5,6
+//   NORD camp: 6,5,4,3,2,1,0 puis SUD camp  : 0,1,2,3,4,5,6
+// Sens de distribution = boucle continue
+
+function navigate(player, index, steps) {
+  // Retourne la position après `steps` pas depuis (player, index) EXCLU
+  // Chemin pour SUD : SUD6→SUD5→...→SUD0→NORD0→NORD1→...→NORD6→SUD6→...
+  // Chemin pour NORD: NORD6→NORD5→...→NORD0→SUD0→SUD1→...→SUD6→NORD6→...
+  // On part de la position SUIVANTE de (player, index)
+  const path = buildPath(player);
+  // Trouver la position de (player, index) dans le chemin
+  const startPos = path.findIndex(p => p.player === player && p.index === index);
+  const nextPos = (startPos + steps) % path.length;
+  return path[nextPos];
+}
+
+function buildPath(startPlayer) {
+  // Construit le chemin de distribution depuis le joueur qui sème
+  // SUD: SUD[6,5,4,3,2,1,0], NORD[0,1,2,3,4,5,6] puis recommence
+  // NORD: NORD[6,5,4,3,2,1,0], SUD[0,1,2,3,4,5,6] puis recommence
+  let path = [];
+  if (startPlayer === PLAYERS.SUD) {
+    for (let i = 6; i >= 0; i--) path.push({ player: PLAYERS.SUD,  index: i });
+    for (let i = 0; i <= 6; i++) path.push({ player: PLAYERS.NORD, index: i });
+  } else {
+    for (let i = 6; i >= 0; i--) path.push({ player: PLAYERS.NORD, index: i });
+    for (let i = 0; i <= 6; i++) path.push({ player: PLAYERS.SUD,  index: i });
+  }
+  return path;
+}
+
+function executeMove(player, cellIndex) {
+  animating = true;
+  const opponent = player === PLAYERS.NORD ? PLAYERS.SUD : PLAYERS.NORD;
+  let seeds = board[player][cellIndex];
+  board[player][cellIndex] = 0;
+
+  const path = buildPath(player);
+  const startPos = path.findIndex(p => p.player === player && p.index === cellIndex);
+
+  // Si ≥14 graines : on saute la case de départ lors du premier passage
+  let skipStart = seeds >= 14;
+  let positions = [];
+  let cur = startPos;
+
+  for (let s = 0; s < seeds; s++) {
+    cur = (cur + 1) % path.length;
+    const pos = path[cur];
+    // Sauter la case de départ lors du premier tour si ≥14
+    if (skipStart && pos.player === player && pos.index === cellIndex) {
+      cur = (cur + 1) % path.length;
+      const pos2 = path[cur];
+      positions.push(pos2);
+    } else {
+      positions.push(pos);
+    }
+  }
+
+  // Simuler la distribution
+  let tempBoard = { NORD: [...board.NORD], SUD: [...board.SUD] };
+  positions.forEach(pos => {
+    tempBoard[pos.player][pos.index]++;
+  });
+
+  // Vérifier si on vide complètement le camp adverse (interdit)
+  const wouldEmptyOpponent = tempBoard[opponent].every(s => s === 0);
+
+  // Déterminer les prises
+  let captured = 0;
+  let capturedFrom = [];
+  const lastPos = positions[positions.length - 1];
+
+  if (!wouldEmptyOpponent && lastPos.player === opponent) {
+    // Cas spécial : si la distribution s'arrête à case n°1 adverse APRÈS ≥1 tour complet
+    const isCase1 = lastPos.index === 0;
+    const didFullTour = seeds >= 14; // simplifié : si ≥14 graines distribuées
+
+    if (isCase1 && didFullTour) {
+      // On récolte juste 1 graine (la dernière)
+      captured = 1;
+      capturedFrom = [lastPos];
+      tempBoard[opponent][0]--;
+    } else if (!isCase1) {
+      // Prise normale : dernière graine dans case adverse (hors case 1) qui contient 2–4
+      let checkPos = lastPos;
+      let chain = true;
+      while (chain && checkPos.player === opponent && checkPos.index !== 0) {
+        const cnt = tempBoard[checkPos.player][checkPos.index];
+        if (cnt >= 2 && cnt <= 4) {
+          captured += cnt;
+          capturedFrom.push({...checkPos});
+          tempBoard[checkPos.player][checkPos.index] = 0;
+          // Case précédente dans le sens de la boucle = index + 1 (on revient en arrière)
+          // La "précédente" dans la direction de semis = case à index immédiatement avant
+          // Sens SUD dans camp NORD : 0→1→2→3→4→5→6
+          // Donc la précédente (vers la gauche = vers index décroissant)
+          const prevIndex = checkPos.index - 1;
+          if (prevIndex >= 0 && prevIndex !== 0) {
+            checkPos = { player: opponent, index: prevIndex };
+          } else if (prevIndex === 0) {
+            // Case 1 adverse peut être prise EN CHAÎNE
+            const cnt0 = tempBoard[opponent][0];
+            if (cnt0 >= 2 && cnt0 <= 4) {
+              captured += cnt0;
+              capturedFrom.push({ player: opponent, index: 0 });
+              tempBoard[opponent][0] = 0;
+            }
+            chain = false;
+          } else {
+            chain = false;
+          }
+        } else {
+          chain = false;
+        }
+      }
+    }
+    // Si case 1 adverse et pas de tour complet → pas de prise sur case 1
+  }
+
+  // Appliquer le coup
+  board = tempBoard;
+
+  // Règle case 7 : si on a semé 1 ou 2 graines chez l'adversaire via case 7 (index 6)
+  // Ces graines reviennent à l'adversaire comme "score"
+  if (cellIndex === 6) {
+    const sentToOpponent = positions.filter(p => p.player === opponent).length;
+    if (sentToOpponent === 1 || sentToOpponent === 2) {
+      // Ces graines reviennent à l'adversaire (score)
+      captured -= sentToOpponent;
+      scores[opponent] += sentToOpponent;
+      // Retirer ces graines du plateau
+      const opSeeds = positions.filter(p => p.player === opponent);
+      opSeeds.forEach(p => { board[p.player][p.index] = Math.max(0, board[p.player][p.index] - 1); });
+      addHistory(`${NAMES[player]} : case ${cellIndex+1} → interdit case 7 (${sentToOpponent} graine(s) données à ${NAMES[opponent]})`);
+    }
+  }
+
+  scores[player] += Math.max(0, captured);
+
+  const moveDesc = `${NAMES[player]} sème case ${cellIndex + 1} (${seeds} graines) → ${captured > 0 ? '🌾 récolte ' + captured + ' graines' : 'pas de récolte'}`;
+  addHistory(moveDesc);
+
+  renderBoard();
+  updateScoreboard();
+
+  // Vérifier fin de partie
+  if (checkEndGame()) {
+    animating = false;
+    return;
+  }
+
+  // Changer de joueur
+  currentPlayer = opponent;
+
+  // Vérifier solidarité pour le nouveau joueur
+  checkSolidarity();
+
+  animating = false;
+  highlightTurn();
+  setStatus(`Tour de <b>${NAMES[currentPlayer]}</b> — Choisissez une case à semer.`, '');
+}
+
+function checkEndGame() {
+  const total = board.NORD.reduce((a,b)=>a+b,0) + board.SUD.reduce((a,b)=>a+b,0);
+
+  if (scores.NORD >= WIN_THRESHOLD) {
+    endGame(`${NAMES.NORD} remporte la partie avec ${scores.NORD} graines ! 🎉`);
+    return true;
+  }
+  if (scores.SUD >= WIN_THRESHOLD) {
+    endGame(`${NAMES.SUD} remporte la partie avec ${scores.SUD} graines ! 🎉`);
+    return true;
+  }
+  if (total < MIN_REMAINING) {
+    // Les graines restantes reviennent au propriétaire
+    scores.NORD += board.NORD.reduce((a,b)=>a+b,0);
+    scores.SUD  += board.SUD.reduce((a,b)=>a+b,0);
+    board.NORD = Array(TOTAL_CELLS).fill(0);
+    board.SUD  = Array(TOTAL_CELLS).fill(0);
+    updateScoreboard();
+    const winner = scores.NORD > scores.SUD ? NAMES.NORD : (scores.SUD > scores.NORD ? NAMES.SUD : null);
+    endGame(winner ? `${winner} gagne ! Moins de 10 graines sur le tablier.` : 'Partie nulle ! Moins de 10 graines sur le tablier.');
+    return true;
+  }
+  return false;
+}
+
+function checkSolidarity() {
+  const opponent = currentPlayer === PLAYERS.NORD ? PLAYERS.SUD : PLAYERS.NORD;
+  // Si camp du joueur COURANT est vide, l'adversaire (qui vient de jouer) devait alimenter
+  // Ici on vérifie si le camp du JOUEUR COURANT est vide
+  if (board[currentPlayer].every(s => s === 0)) {
+    // L'autre joueur doit jouer solidarité - déjà géré dans handleCellClick
+    // Si aucun coup de l'adversaire ne peut atteindre le camp courant → fin
+    const canReach = board[opponent].some((seeds, i) => {
+      if (seeds === 0) return false;
+      return countSeedsToOpponent(opponent, i, seeds) > 0;
+    });
+    if (!canReach) {
+      scores.NORD += board.NORD.reduce((a,b)=>a+b,0);
+      scores.SUD  += board.SUD.reduce((a,b)=>a+b,0);
+      board.NORD = Array(TOTAL_CELLS).fill(0);
+      board.SUD  = Array(TOTAL_CELLS).fill(0);
+      renderBoard();
+      updateScoreboard();
+      const winner = scores.NORD > scores.SUD ? NAMES.NORD : (scores.SUD > scores.NORD ? NAMES.SUD : null);
+      endGame(winner ? `Solidarité impossible — ${winner} gagne !` : 'Solidarité impossible — Partie nulle.');
+      gameOver = true;
+    } else {
+      setStatus(`⚠️ Camp de ${NAMES[currentPlayer]} vide — ${NAMES[opponent]} doit jouer la solidarité (≥7 graines ou le maximum).`, 'warn');
+    }
+  }
+}
+
+function endGame(msg) {
+  gameOver = true;
+  setStatus(msg, 'end');
+  document.getElementById('modal-title').textContent = '🏆 Fin de partie';
+  document.getElementById('modal-result').textContent = msg;
+  document.getElementById('mf-nord-name').textContent = NAMES.NORD;
+  document.getElementById('mf-sud-name').textContent  = NAMES.SUD;
+  document.getElementById('mf-nord-val').textContent  = scores.NORD;
+  document.getElementById('mf-sud-val').textContent   = scores.SUD;
+  document.getElementById('modal').classList.add('open');
+  applyClickable();
+}
+
+function addHistory(msg) {
+  history.push(msg);
+  const box = document.getElementById('history-box');
+  const p = document.createElement('p');
+  p.textContent = `${history.length}. ${msg}`;
+  box.appendChild(p);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ─── ÉVÉNEMENTS ───────────────────────────────────────────────
+document.getElementById('btn-restart').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('open');
+  initGame();
+});
+document.getElementById('modal-restart').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('open');
+  initGame();
+});
+document.getElementById('btn-rules').addEventListener('click', () => {
+  document.getElementById('modal-rules').classList.add('open');
+});
+document.getElementById('close-rules').addEventListener('click', () => {
+  document.getElementById('modal-rules').classList.remove('open');
+});
+document.getElementById('hist-toggle').addEventListener('click', () => {
+  const box = document.getElementById('history-box');
+  box.classList.toggle('open');
+  document.getElementById('hist-toggle').textContent =
+    box.classList.contains('open') ? '▴ Historique des coups' : '▾ Historique des coups';
+});
+
+// ─── DÉMARRAGE ────────────────────────────────────────────────
+initGame();
+</script>
+</body>
+</html>
